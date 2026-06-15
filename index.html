@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gerenciamento de Contatos</title>
+
+    <!-- Bootstrap -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+
+    <!-- Bootstrap Icons -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css"
+      rel="stylesheet"
+    />
+
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  </head>
+  <body>
+    <div class="container py-4">
+      <div class="mb-4">
+        <h1 class="display-6">Gerenciamento de Contatos</h1>
+      </div>
+
+      <!-- BUSCA -->
+      <div class="card shadow-sm mb-4">
+        <div class="card-header">
+          <h5 class="mb-0">Busca</h5>
+        </div>
+
+        <div class="card-body">
+          <form id="form-busca">
+            <div class="row g-2">
+              <div class="col-md">
+                <input
+                  type="search"
+                  id="busca-nome"
+                  class="form-control"
+                  placeholder="Digite o nome para busca"
+                />
+              </div>
+
+              <div class="col-md-auto">
+                <button type="submit" id="btn-buscar" class="btn btn-primary">
+                  <i class="bi bi-search"></i>
+                  Buscar
+                </button>
+              </div>
+            </div>
+          </form>
+
+          <hr />
+
+          <button type="button" id="btn-novo" class="btn btn-success">
+            <i class="bi bi-plus-circle"></i>
+            Novo
+          </button>
+        </div>
+      </div>
+
+      <!-- FORMULÁRIO -->
+      <div class="card shadow-sm mb-4">
+        <div class="card-header">
+          <h5 id="titulo-formulario" class="mb-0">
+            <i class="bi bi-person-plus"></i>
+            Novo Contato
+          </h5>
+        </div>
+
+        <div class="card-body">
+          <form id="form-contato">
+            <div class="mb-3">
+              <label for="nome" class="form-label"> Nome * </label>
+
+              <input type="text" id="nome" class="form-control" required />
+            </div>
+
+            <div class="row">
+              <div class="col-md-4 mb-3">
+                <label for="telefone" class="form-label"> Telefone * </label>
+
+                <input type="tel" id="telefone" class="form-control" required />
+              </div>
+
+              <div class="col-md-5 mb-3">
+                <label for="email" class="form-label"> E-mail </label>
+
+                <input type="email" id="email" class="form-control" />
+              </div>
+
+              <div class="col-md-3 mb-3">
+                <label for="dtcontato" class="form-label">
+                  Data de Contato
+                </label>
+
+                <input type="date" id="dtcontato" class="form-control" />
+              </div>
+            </div>
+
+            <div class="d-flex gap-2">
+              <button type="button" id="btn-salvar" class="btn btn-primary">
+                <i class="bi bi-check-circle"></i>
+                Salvar
+              </button>
+
+              <button type="button" id="btn-cancelar" class="btn btn-secondary">
+                <i class="bi bi-x-circle"></i>
+                Cancelar
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- TABELA -->
+      <div class="card shadow-sm">
+        <div class="card-header">
+          <h5 class="mb-0">Lista de Contatos</h5>
+        </div>
+
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-striped table-hover align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th>ID</th>
+                  <th>Nome</th>
+                  <th>Telefone</th>
+                  <th>E-mail</th>
+                  <th>Data de Contato</th>
+                  <th class="text-center">Ações</th>
+                </tr>
+              </thead>
+
+              <tbody id="tabela_contatos"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // ==================================================
+      // CONFIGURAÇÃO SUPABASE
+      // ==================================================
+
+      const SUPABASE_URL = "https://pvyjwtaaleesjvlswgpw.supabase.co";
+
+      const SUPABASE_KEY = "sb_publishable_n_SYiGPV1jSlmUXas4RDdQ_K_pfZv8t";
+
+      const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+      // ==================================================
+      // ESTADO
+      // ==================================================
+
+      let idEdicao = null;
+
+      const tabelaContatos = document.getElementById("tabela_contatos");
+
+      const form = document.getElementById("form-contato");
+
+      const tituloForm = document.getElementById("titulo-formulario");
+
+      // ==================================================
+      // LISTAGEM
+      // ==================================================
+
+      async function carregarContatos(busca = "") {
+        let query = _supabase.from("contato").select("*").order("nome");
+
+        if (busca.trim() !== "") {
+          query = query.ilike("nome", `%${busca}%`);
+        }
+
+        const { data, error } = await query;
+
+        if (error) {
+          console.error(error);
+          alert("Erro ao carregar contatos.");
+          return;
+        }
+
+        renderizarTabela(data);
+      }
+
+      // ==================================================
+      // SALVAR
+      // ==================================================
+
+      async function salvar() {
+        const dados = {
+          nome: document.getElementById("nome").value.trim(),
+          telefone: document.getElementById("telefone").value.trim(),
+          email: document.getElementById("email").value.trim(),
+          dtcontato: document.getElementById("dtcontato").value || null,
+        };
+
+        if (!dados.nome) {
+          alert("Informe o nome.");
+          return;
+        }
+
+        if (!dados.telefone) {
+          alert("Informe o telefone.");
+          return;
+        }
+
+        if (idEdicao) {
+          const { error } = await _supabase
+            .from("contato")
+            .update(dados)
+            .eq("id", idEdicao);
+
+          if (error) {
+            console.error(error);
+            alert("Erro ao atualizar contato.");
+            return;
+          }
+
+          alert("Contato atualizado com sucesso!");
+        } else {
+          const { error } = await _supabase.from("contato").insert([dados]);
+
+          if (error) {
+            console.error(error);
+            alert("Erro ao cadastrar contato.");
+            return;
+          }
+
+          alert("Contato cadastrado com sucesso!");
+        }
+
+        limparFormulario();
+        carregarContatos();
+      }
+
+      // ==================================================
+      // EXCLUIR
+      // ==================================================
+
+      async function excluir(id) {
+        const confirmar = confirm("Deseja realmente excluir este contato?");
+
+        if (!confirmar) {
+          return;
+        }
+
+        const { error } = await _supabase.from("contato").delete().eq("id", id);
+
+        if (error) {
+          console.error(error);
+          alert("Erro ao excluir contato.");
+          return;
+        }
+
+        alert("Contato excluído com sucesso!");
+
+        carregarContatos();
+      }
+
+      // ==================================================
+      // EDITAR
+      // ==================================================
+
+      function prepararEdicao(contato) {
+        idEdicao = contato.id;
+
+        tituloForm.innerHTML =
+          '<i class="bi bi-pencil-square"></i> Editar Contato';
+
+        document.getElementById("nome").value = contato.nome || "";
+
+        document.getElementById("telefone").value = contato.telefone || "";
+
+        document.getElementById("email").value = contato.email || "";
+
+        document.getElementById("dtcontato").value = contato.dtcontato || "";
+
+        document.getElementById("nome").focus();
+
+        document.getElementById("form-contato").scrollIntoView({
+          behavior: "smooth",
+        });
+      }
+
+      // ==================================================
+      // NOVO
+      // ==================================================
+
+      function novoContato() {
+        limparFormulario();
+
+        document.getElementById("nome").focus();
+
+        document.getElementById("form-contato").scrollIntoView({
+          behavior: "smooth",
+        });
+      }
+
+      // ==================================================
+      // CANCELAR
+      // ==================================================
+
+      function cancelar() {
+        const possuiDados =
+          document.getElementById("nome").value ||
+          document.getElementById("telefone").value ||
+          document.getElementById("email").value ||
+          document.getElementById("dtcontato").value;
+
+        if (possuiDados) {
+          const confirmar = confirm("Cancelar alterações?");
+
+          if (!confirmar) {
+            return;
+          }
+        }
+
+        limparFormulario();
+      }
+
+      // ==================================================
+      // LIMPAR
+      // ==================================================
+
+      function limparFormulario() {
+        idEdicao = null;
+
+        form.reset();
+
+        tituloForm.innerHTML = '<i class="bi bi-person-plus"></i> Novo Contato';
+      }
+
+      // ==================================================
+      // TABELA
+      // ==================================================
+
+      function renderizarTabela(contatos) {
+        tabelaContatos.innerHTML = "";
+
+        if (!contatos.length) {
+          tabelaContatos.innerHTML = `
+                <tr>
+                    <td colspan="6" class="text-center text-muted">
+                        Nenhum contato encontrado.
+                    </td>
+                </tr>
+            `;
+
+          return;
+        }
+
+        contatos.forEach((contato) => {
+          const tr = document.createElement("tr");
+
+          tr.innerHTML = `
+
+                <td>${contato.id}</td>
+
+                <td>${contato.nome ?? ""}</td>
+
+                <td>${contato.telefone ?? ""}</td>
+
+                <td>${contato.email ?? ""}</td>
+
+                <td>${contato.dtcontato ?? "-"}</td>
+
+                <td class="text-center">
+
+                    <div class="btn-group btn-group-sm">
+
+                        <button
+                            type="button"
+                            class="btn btn-outline-primary"
+                            onclick='prepararEdicao(${JSON.stringify(contato)})'
+                            title="Editar">
+
+                            <i class="bi bi-pencil"></i>
+
+                        </button>
+
+                        <button
+                            type="button"
+                            class="btn btn-outline-danger"
+                            onclick="excluir(${contato.id})"
+                            title="Excluir">
+
+                            <i class="bi bi-trash"></i>
+
+                        </button>
+
+                    </div>
+
+                </td>
+
+            `;
+
+          tabelaContatos.appendChild(tr);
+        });
+      }
+
+      // ==================================================
+      // EVENTOS
+      // ==================================================
+
+      document.getElementById("btn-salvar").addEventListener("click", salvar);
+
+      document
+        .getElementById("btn-cancelar")
+        .addEventListener("click", cancelar);
+
+      document
+        .getElementById("btn-novo")
+        .addEventListener("click", novoContato);
+
+      document
+        .getElementById("form-busca")
+        .addEventListener("submit", function (e) {
+          e.preventDefault();
+
+          const termo = document.getElementById("busca-nome").value;
+
+          carregarContatos(termo);
+        });
+
+      // ==================================================
+      // INICIALIZAÇÃO
+      // ==================================================
+
+      carregarContatos();
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>
