@@ -5,6 +5,7 @@ Este projeto consiste em uma aplicação web simples para gerenciamento de conta
 ## 👥 Integrantes do Grupo
 
 - **Nome do Integrante** - Hyago Fernando Ferreira Rodrigues
+- **Nome do Integrante** - Edson Davi Farias Martins
 
 ---
 
